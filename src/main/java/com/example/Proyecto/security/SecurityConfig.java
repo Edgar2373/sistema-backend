@@ -14,6 +14,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.Arrays;
 import java.util.List;
 
 @Configuration
@@ -30,24 +31,24 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))  // <-- AGREGADO PARA EL CORS
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session
-                        -> session.sessionCreationPolicy(
-                        SessionCreationPolicy.STATELESS
-                )
+                                -> session.sessionCreationPolicy(
+                                SessionCreationPolicy.STATELESS
+                        )
                 )
                 .authorizeHttpRequests(auth -> auth
-                .requestMatchers(
-                        "/",
-                        "/api/auth/**",
-                        "/usuarios/**",
-                        "/api/auth/register",
-                        "/swagger-ui/**",
-                        "/v3/api-docs/**",
-                        "/swagger-ui.html"
-                ).permitAll()
-                .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                .requestMatchers("/api/operador/**").hasAnyRole("ADMIN", "OPERADOR")
-                .requestMatchers("/api/repartidor/**").hasRole("REPARTIDOR")
-                .anyRequest().authenticated()
+                        .requestMatchers(
+                                "/",
+                                "/api/auth/**",
+                                "/usuarios/**",
+                                "/api/auth/register",
+                                "/swagger-ui/**",
+                                "/v3/api-docs/**",
+                                "/swagger-ui.html"
+                        ).permitAll()
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/operador/**").hasAnyRole("ADMIN", "OPERADOR")
+                        .requestMatchers("/api/repartidor/**").hasRole("REPARTIDOR")
+                        .anyRequest().authenticated()
                 )
                 .addFilterBefore(
                         jwtFilter,
@@ -69,11 +70,18 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        
-        String allowedOrigin = System.getenv("CORS_ALLOWED_ORIGIN") != null
-                ? System.getenv("CORS_ALLOWED_ORIGIN")
-                : "http://localhost:5173";
-        config.setAllowedOrigins(List.of(allowedOrigin));
+
+        String allowedOrigins = System.getenv("CORS_ALLOWED_ORIGINS");
+
+        if (allowedOrigins != null && !allowedOrigins.isBlank()) {
+            config.setAllowedOriginPatterns(
+                    Arrays.stream(allowedOrigins.split(","))
+                            .map(String::trim)
+                            .toList()
+            );
+        } else {
+            config.setAllowedOriginPatterns(List.of("http://localhost:5173"));
+        }
 
         config.setAllowedMethods(List.of("*"));
         config.setAllowedHeaders(List.of("*"));
