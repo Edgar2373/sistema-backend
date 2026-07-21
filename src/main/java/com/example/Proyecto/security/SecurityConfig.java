@@ -71,7 +71,7 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
-        String allowedOrigins = System.getenv("CORS_ALLOWED_ORIGINS");
+        String allowedOrigins = System.getenv("CORS_ALLOWED_ORIGIN");
 
         if (allowedOrigins != null && !allowedOrigins.isBlank()) {
             config.setAllowedOriginPatterns(
