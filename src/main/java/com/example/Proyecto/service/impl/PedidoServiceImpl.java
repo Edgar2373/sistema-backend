@@ -3,12 +3,16 @@ package com.example.Proyecto.service.impl;
 import com.example.Proyecto.entity.Pedido;
 import com.example.Proyecto.entity.DetallePedido;
 import com.example.Proyecto.entity.Repartidor;
+import com.example.Proyecto.entity.Vehiculo;
+import com.example.Proyecto.entity.RepartidorVehiculo;
 import com.example.Proyecto.entity.Producto;
 import com.example.Proyecto.entity.Boleta;
 import com.example.Proyecto.entity.Pago;
 import com.example.Proyecto.repository.PedidoRepository;
 import com.example.Proyecto.repository.DetallePedidoRepository;
 import com.example.Proyecto.repository.RepartidorRepository;
+import com.example.Proyecto.repository.RepartidorVehiculoRepository;
+import com.example.Proyecto.repository.VehiculoRepository;
 import com.example.Proyecto.repository.ProductoRepository;
 import com.example.Proyecto.repository.BoletaRepository;
 import com.example.Proyecto.repository.PagoRepository;
@@ -20,6 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class PedidoServiceImpl implements PedidoService {
@@ -41,6 +46,12 @@ public class PedidoServiceImpl implements PedidoService {
 
     @Autowired
     private PagoRepository pagoRepository;
+
+    @Autowired
+    private RepartidorVehiculoRepository repartidorVehiculoRepository;
+
+    @Autowired
+    private VehiculoRepository vehiculoRepository;
 
     @Override
     public List<Pedido> listar() {
@@ -82,11 +93,11 @@ public class PedidoServiceImpl implements PedidoService {
 
             Pedido guardado = pedidoRepository.save(pedidoExistente);
 
-            if (pedido.getEstadoPedido() != null
-                    && "ENTREGADO".equals(pedido.getEstadoPedido().getNombreEstado())
-                    && pedidoExistente.getRepartidor() != null) {
+            if (guardado.getEstadoPedido() != null
+                    && "ENTREGADO".equals(guardado.getEstadoPedido().getNombreEstado())
+                    && guardado.getRepartidor() != null) {
 
-                Integer idRep = pedidoExistente.getRepartidor().getIdRepartidor();
+                Integer idRep = guardado.getRepartidor().getIdRepartidor();
                 List<Pedido> pedidosRepartidor = pedidoRepository.buscarPedidosPorRepartidor(idRep);
                 boolean todosCompletados = pedidosRepartidor.stream()
                         .allMatch(p -> "ENTREGADO".equals(p.getEstadoPedido().getNombreEstado())
@@ -97,6 +108,14 @@ public class PedidoServiceImpl implements PedidoService {
                     if (repartidor != null) {
                         repartidor.setEstadoRepartidor("DISPONIBLE");
                         repartidorRepository.save(repartidor);
+                    }
+
+                    Optional<RepartidorVehiculo> asignacion = repartidorVehiculoRepository
+                            .findByRepartidorIdRepartidorAndEstadoAsignacion(idRep, "ACTIVA");
+                    if (asignacion.isPresent()) {
+                        Vehiculo vehiculo = asignacion.get().getVehiculo();
+                        vehiculo.setEstadoVehiculo("DISPONIBLE");
+                        vehiculoRepository.save(vehiculo);
                     }
                 }
             }
@@ -202,9 +221,17 @@ public class PedidoServiceImpl implements PedidoService {
             totalBoleta += subtotal;
         }
 
-        // 4. Cambiar Estado del Repartidor
+        // 4. Cambiar Estado del Repartidor y Vehículo
         repartidor.setEstadoRepartidor("OCUPADO");
         repartidorRepository.save(repartidor);
+
+        Optional<RepartidorVehiculo> asignacion = repartidorVehiculoRepository
+                .findByRepartidorIdRepartidorAndEstadoAsignacion(repartidor.getIdRepartidor(), "ACTIVA");
+        if (asignacion.isPresent()) {
+            Vehiculo vehiculo = asignacion.get().getVehiculo();
+            vehiculo.setEstadoVehiculo("OCUPADO");
+            vehiculoRepository.save(vehiculo);
+        }
 
         // 5. Comprobante y Pago
         Boleta boleta = new Boleta();
